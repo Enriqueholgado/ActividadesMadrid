@@ -50,6 +50,9 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
+    <!-- Leaflet Heat (Feature 8) -->
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
     <style>
       /* ============================================================
          CSS CUSTOM PROPERTIES – Light & Dark themes
@@ -595,12 +598,13 @@
 
       .map-layout {
         display: grid;
-        grid-template-columns: 1fr 300px;
-        gap: 16px;
+        grid-template-columns: 1fr 280px;
+        gap: 14px;
         align-items: start;
       }
       .map-main {
         position: relative;
+        min-width: 0;
       }
       #map {
         height: 72vh;
@@ -610,6 +614,8 @@
         z-index: 1;
       }
       .map-side {
+        max-height: 72vh;
+        overflow-y: auto;
       }
       .map-controls-card {
         background: var(--surface);
@@ -1456,6 +1462,531 @@
       }
 
       /* ============================================================
+         FEATURE 1: FAVORITOS TAB + HEART BUTTONS
+      ============================================================ */
+      .btn-heart {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        padding: 2px 4px;
+        line-height: 1;
+        transition: transform 0.2s;
+        display: inline-flex;
+        align-items: center;
+      }
+      .btn-heart:hover {
+        transform: scale(1.25);
+      }
+      .btn-heart.favorited {
+        color: #ef4444;
+      }
+      .btn-heart:not(.favorited) {
+        color: var(--text-muted);
+      }
+
+      .favoritos-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 18px;
+        margin-top: 18px;
+      }
+      .fav-card {
+        background: var(--surface);
+        border-radius: var(--radius);
+        padding: 20px;
+        box-shadow: var(--shadow-md);
+        border: 1px solid var(--border);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition:
+          box-shadow var(--transition),
+          transform var(--transition);
+      }
+      .fav-card:hover {
+        box-shadow: var(--shadow-lg);
+        transform: translateY(-2px);
+      }
+      .fav-card-title {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.35;
+      }
+      .fav-card-dates {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .fav-card-location {
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .fav-card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+      }
+      .fav-empty {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--text-muted);
+      }
+      .fav-empty .fav-empty-icon {
+        font-size: 48px;
+        margin-bottom: 12px;
+      }
+      .fav-empty p {
+        font-size: 15px;
+      }
+
+      /* ============================================================
+         FEATURE 3: PRICE FILTER PILLS
+      ============================================================ */
+      .price-pill-group {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .price-pill {
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-muted);
+        transition: all 0.18s;
+        font-family: inherit;
+      }
+      .price-pill:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      .price-pill.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+      .price-pill.active-free {
+        background: #16a34a;
+        color: #fff;
+        border-color: #16a34a;
+      }
+      .price-pill.active-paid {
+        background: #d97706;
+        color: #fff;
+        border-color: #d97706;
+      }
+
+      /* ============================================================
+         FEATURE 4: ROUTE PLANNER
+      ============================================================ */
+      .btn-route {
+        background: #f0fdf4;
+        color: #0f766e;
+        border-color: #99f6e4;
+        font-weight: 700;
+      }
+      [data-theme="dark"] .btn-route {
+        background: #134e4a;
+        color: #5eead4;
+        border-color: #0f766e;
+      }
+      .btn-route.active,
+      .btn-route:hover {
+        background: #0f766e;
+        color: #fff;
+        border-color: #0f766e;
+      }
+      .route-panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px;
+        margin-bottom: 10px;
+        box-shadow: var(--shadow-sm);
+        display: none;
+      }
+      .route-panel.visible {
+        display: block;
+      }
+      .route-panel-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+      }
+      .route-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .route-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        color: var(--text);
+      }
+      .route-num {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #fff;
+        font-size: 11px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .route-dist-chip {
+        font-size: 11px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 2px 7px;
+        color: var(--text-muted);
+        margin-left: auto;
+      }
+
+      /* ============================================================
+         FEATURE 5: AGENDA / CALENDAR TAB
+      ============================================================ */
+      .agenda-toolbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 18px;
+        flex-wrap: wrap;
+      }
+      .agenda-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .agenda-week-label {
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--text);
+        min-width: 200px;
+        text-align: center;
+      }
+      .agenda-nav button {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text);
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 16px;
+        font-family: inherit;
+        transition: background var(--transition);
+      }
+      .agenda-nav button:hover {
+        background: var(--surface2);
+      }
+      .agenda-filter select {
+        padding: 7px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 13px;
+        background: var(--surface);
+        color: var(--text);
+        font-family: inherit;
+      }
+      .calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+      }
+      .cal-day-header {
+        text-align: center;
+        font-size: 11.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--text-muted);
+        padding: 6px 2px;
+      }
+      .cal-day-cell {
+        background: var(--surface);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        min-height: 120px;
+        padding: 8px;
+        position: relative;
+        transition: border-color var(--transition);
+      }
+      .cal-day-cell.today {
+        border-color: var(--accent);
+        border-width: 2px;
+      }
+      .cal-day-cell.other-month {
+        opacity: 0.45;
+      }
+      .cal-day-num {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-bottom: 5px;
+      }
+      .cal-day-cell.today .cal-day-num {
+        color: var(--accent);
+      }
+      .cal-event-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10.5px;
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        margin-bottom: 3px;
+        cursor: pointer;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        transition: background var(--transition);
+        color: var(--text);
+        line-height: 1.4;
+      }
+      .cal-event-chip:hover {
+        background: var(--accent-light);
+      }
+      .cal-event-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .cal-more-chip {
+        font-size: 10px;
+        color: var(--accent);
+        font-weight: 700;
+        cursor: pointer;
+        padding: 1px 4px;
+      }
+      .cal-gratis-badge {
+        background: #dcfce7;
+        color: #166534;
+        font-size: 9px;
+        font-weight: 700;
+        padding: 0px 4px;
+        border-radius: 6px;
+        margin-left: 2px;
+        flex-shrink: 0;
+      }
+      @media (max-width: 768px) {
+        .calendar-grid {
+          grid-template-columns: repeat(7, 1fr);
+          gap: 3px;
+        }
+        .cal-day-cell {
+          min-height: 70px;
+          padding: 4px;
+        }
+      }
+
+      /* ============================================================
+         FEATURE 6: SORPRENDEME BUTTON + CONFETTI
+      ============================================================ */
+      .btn-surprise {
+        background: linear-gradient(135deg, #7c3aed, #db2777);
+        color: #fff;
+        border-color: transparent;
+        font-weight: 700;
+      }
+      .btn-surprise:hover {
+        background: linear-gradient(135deg, #6d28d9, #be185d);
+      }
+      @keyframes confetti-fall {
+        0% {
+          transform: translateY(-20px) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100vh) rotate(720deg);
+          opacity: 0;
+        }
+      }
+      .confetti-dot {
+        position: fixed;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 9999;
+        animation: confetti-fall 2.5s ease-in forwards;
+      }
+
+      /* ============================================================
+         FEATURE 7: EVENTOS SIMILARES (in modal)
+      ============================================================ */
+      .similar-section {
+        margin-top: 18px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .similar-section h4 {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+      }
+      .similar-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .similar-card {
+        background: var(--surface2);
+        border-radius: var(--radius-sm);
+        padding: 10px 12px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        transition:
+          background var(--transition),
+          border-color var(--transition);
+      }
+      .similar-card:hover {
+        background: var(--accent-light);
+        border-color: var(--accent);
+      }
+      .similar-card-title {
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-bottom: 4px;
+      }
+      .similar-card-meta {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      /* ============================================================
+         FEATURE 8: HEATMAP TOGGLE BUTTON
+      ============================================================ */
+      .btn-heatmap {
+        background: #fef3c7;
+        color: #92400e;
+        border-color: #fcd34d;
+        font-weight: 700;
+      }
+      [data-theme="dark"] .btn-heatmap {
+        background: #451a03;
+        color: #fcd34d;
+        border-color: #92400e;
+      }
+      .btn-heatmap.active {
+        background: #f59e0b;
+        color: #fff;
+        border-color: #d97706;
+      }
+
+      /* ============================================================
+         FEATURE 10: WIDGET EMBEBIBLE
+      ============================================================ */
+      .widget-preview {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        padding: 18px;
+        margin-top: 14px;
+        background: var(--surface2);
+        text-align: center;
+        color: var(--text-muted);
+        font-size: 13px;
+      }
+      .widget-iframe-mock {
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--surface);
+        padding: 24px;
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        color: var(--text-muted);
+        font-size: 12px;
+      }
+      .widget-code-area {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font-size: 12px;
+        font-family: monospace;
+        background: var(--surface2);
+        color: var(--text);
+        resize: none;
+        margin-top: 10px;
+      }
+
+      /* ============================================================
+         MODAL CALENDAR + FAVORITE BUTTON IN MODAL HEADER
+      ============================================================ */
+      .modal-header-actions {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .modal-action-btn {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-muted);
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        transition:
+          background var(--transition),
+          color var(--transition);
+        font-family: inherit;
+        white-space: nowrap;
+      }
+      .modal-action-btn:hover {
+        background: var(--border);
+        color: var(--text);
+      }
+      .modal-action-btn.fav-active {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #ef4444;
+      }
+      [data-theme="dark"] .modal-action-btn.fav-active {
+        background: #450a0a;
+        border-color: #7f1d1d;
+        color: #f87171;
+      }
+
+      /* ============================================================
          HERO WELCOME BANNER
       ============================================================ */
       .hero-banner {
@@ -1654,6 +2185,39 @@
           Explorador
           <span class="tab-badge" id="badgeExplorador">–</span>
         </button>
+        <button data-tab="favoritos" onclick="switchTab('favoritos', this)">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path
+              d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+            />
+          </svg>
+          Favoritos
+          <span class="tab-badge" id="badgeFavoritos">0</span>
+        </button>
+        <button data-tab="agenda" onclick="switchTab('agenda', this)">
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.2"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          Agenda
+          <span class="tab-badge" id="badgeAgenda">–</span>
+        </button>
         <button data-tab="sobre" onclick="switchTab('sobre', this)">
           <svg
             width="15"
@@ -1720,6 +2284,24 @@
         "
       >
         📋 Explorador
+      </button>
+      <button
+        data-tab="favoritos"
+        onclick="
+          switchTab('favoritos', this);
+          closeMenu();
+        "
+      >
+        ❤️ Favoritos <span class="tab-badge" id="badgeFavoritosMobile">0</span>
+      </button>
+      <button
+        data-tab="agenda"
+        onclick="
+          switchTab('agenda', this);
+          closeMenu();
+        "
+      >
+        📅 Agenda <span class="tab-badge" id="badgeAgendaMobile">–</span>
       </button>
       <button
         data-tab="sobre"
@@ -1909,14 +2491,28 @@
           </div>
         </div>
         <div class="explorer-actions">
-          <div class="checkbox-row">
-            <label
-              ><input type="checkbox" id="expGratisSi" checked />
-              Gratuito</label
+          <div class="price-pill-group" id="pricePillGroup">
+            <button
+              class="price-pill active"
+              data-price="todos"
+              onclick="setPricePill('todos', this)"
             >
-            <label
-              ><input type="checkbox" id="expGratisNo" checked /> De pago</label
+              Todos
+            </button>
+            <button
+              class="price-pill"
+              data-price="gratis"
+              onclick="setPricePill('gratis', this)"
             >
+              Gratuito
+            </button>
+            <button
+              class="price-pill"
+              data-price="pago"
+              onclick="setPricePill('pago', this)"
+            >
+              De pago
+            </button>
           </div>
           <div class="search-export">
             <button class="btn btn-outline" onclick="exportCSV()">
@@ -1972,6 +2568,53 @@
           </table>
         </div>
         <div class="pagination" id="pagination"></div>
+      </div>
+    </div>
+
+    <!-- ============================================================
+         TAB 5: FAVORITOS
+    ============================================================ -->
+    <div id="tab-favoritos" class="tab-content">
+      <div class="tab-header">
+        <h2>Mis favoritos</h2>
+        <p>Eventos que has guardado para no perderte</p>
+      </div>
+      <div id="favoritosGrid"></div>
+    </div>
+
+    <!-- ============================================================
+         TAB 6: AGENDA
+    ============================================================ -->
+    <div id="tab-agenda" class="tab-content">
+      <div class="tab-header">
+        <h2>Agenda semanal</h2>
+        <p>Vista de calendario con los eventos por semana</p>
+      </div>
+      <div class="agenda-toolbar">
+        <div class="agenda-nav">
+          <button onclick="agendaPrevWeek()" title="Semana anterior">
+            &#8592;
+          </button>
+          <span class="agenda-week-label" id="agendaWeekLabel"></span>
+          <button onclick="agendaNextWeek()" title="Semana siguiente">
+            &#8594;
+          </button>
+        </div>
+        <button class="btn btn-today" onclick="agendaGoToday()">Hoy</button>
+        <div class="agenda-filter">
+          <select id="agendaTipoFilter" onchange="renderAgenda()">
+            <option value="">Todos los tipos</option>
+          </select>
+        </div>
+      </div>
+      <div class="calendar-grid" id="calendarGrid">
+        <div class="cal-day-header">Lun</div>
+        <div class="cal-day-header">Mar</div>
+        <div class="cal-day-header">Mié</div>
+        <div class="cal-day-header">Jue</div>
+        <div class="cal-day-header">Vie</div>
+        <div class="cal-day-header">Sáb</div>
+        <div class="cal-day-header">Dom</div>
       </div>
     </div>
 
@@ -2040,6 +2683,53 @@
             @EnriqueHolgado
           </a>
         </div>
+        <div class="about-card">
+          <h3>📦 Widget embebible</h3>
+          <p>
+            Puedes insertar esta aplicación en tu propio sitio web copiando el
+            siguiente código:
+          </p>
+          <textarea class="widget-code-area" id="widgetCode" rows="3" readonly>
+&lt;iframe src="https://enriqueholgado.github.io/ActividadesMadrid/" width="100%" height="600" frameborder="0" title="Actividades Madrid"&gt;&lt;/iframe&gt;</textarea
+          >
+          <button
+            class="btn btn-primary"
+            style="margin-top: 10px"
+            onclick="copyWidgetCode()"
+          >
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.2"
+            >
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+            </svg>
+            Copiar código
+          </button>
+          <div class="widget-preview">
+            <div class="widget-iframe-mock">
+              <svg
+                width="32"
+                height="32"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3V6z" />
+              </svg>
+              <strong>Actividades Madrid</strong>
+              <span>Vista previa del widget embebido</span>
+              <span style="font-size: 11px; color: var(--text-muted)"
+                >100% × 600px &mdash; iframe</span
+              >
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2056,19 +2746,51 @@
         >
           <div class="modal-header">
             <h2 id="modalTitle"></h2>
-            <button
-              class="modal-close"
-              onclick="closeModal()"
-              aria-label="Cerrar"
-            >
-              &times;
-            </button>
+            <div class="modal-header-actions">
+              <button
+                class="modal-action-btn"
+                id="modalFavBtn"
+                onclick="toggleModalFav()"
+                title="Añadir a favoritos"
+              >
+                <span id="modalFavIcon">🤍</span> Favorito
+              </button>
+              <button
+                class="modal-action-btn"
+                id="modalCalBtn"
+                onclick="downloadICS()"
+                title="Añadir al calendario"
+              >
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.2"
+                >
+                  <rect x="3" y="4" width="18" height="18" rx="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                Calendario
+              </button>
+              <button
+                class="modal-close"
+                onclick="closeModal()"
+                aria-label="Cerrar"
+              >
+                &times;
+              </button>
+            </div>
           </div>
           <div class="modal-body">
             <div class="modal-badges" id="modalBadges"></div>
             <div class="modal-desc" id="modalDesc"></div>
             <div class="modal-grid" id="modalGrid"></div>
             <div id="modalMiniMapWrap"></div>
+            <div id="modalSimilarWrap"></div>
             <div id="modalLinkWrap"></div>
           </div>
         </div>
@@ -2127,6 +2849,24 @@
       let sortDir = "asc";
       let mapInitialized = false;
       let modalMiniMapInstance = null;
+
+      // Feature 1: Favoritos
+      let favoritos = JSON.parse(localStorage.getItem("favoritos") || "[]");
+
+      // Feature 3: Price filter pill state
+      let pricePillState = "todos"; // "todos" | "gratis" | "pago"
+
+      // Feature 4: Route planner
+      let routeMode = false;
+      let routeEvents = [];
+      let routePolylines = [];
+
+      // Feature 5: Agenda
+      let agendaWeekOffset = 0;
+
+      // Feature 8: Heatmap
+      let heatLayer = null;
+      let heatmapActive = false;
 
       // Color palette – Paired from ColorBrewer
       const PALETTE = [
@@ -2234,6 +2974,11 @@
         if (mobileBtn) mobileBtn.classList.add("active");
 
         if (name === "mapa" && map) setTimeout(() => map.invalidateSize(), 150);
+        if (name === "favoritos") renderFavoritos();
+        if (name === "agenda") renderAgenda();
+
+        // Feature 9: update URL hash
+        updateUrlHash({ tab: name });
       }
 
       // ================================================================
@@ -2394,10 +3139,28 @@
             <button class="btn btn-outline" onclick="resetMapFilters()" style="font-size:13px">
               Limpiar filtros
             </button>
+            <button class="btn btn-surprise" onclick="surpriseMe()" title="Evento aleatorio">
+              ✨ S\u00f3rpr\u00e9ndeme
+            </button>
+            <button class="btn btn-route" id="routeModeBtn" onclick="toggleRouteMode()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 17l6-12 6 8 4-6"/><circle cx="3" cy="17" r="2"/><circle cx="21" cy="7" r="2"/></svg>
+              Planificar ruta
+            </button>
+            <button class="btn btn-heatmap" id="heatmapBtn" onclick="toggleHeatmap()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="2"/></svg>
+              Mapa de calor
+            </button>
             <div class="map-count-chip" id="mapCountChip">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
               <span id="mapCountNum">0</span> eventos en el mapa
             </div>
+          </div>
+          <div class="route-panel" id="routePanel">
+            <div class="route-panel-header">
+              <span>Ruta planificada</span>
+              <button class="btn btn-outline" style="padding:4px 10px;font-size:12px" onclick="clearRoute()">Limpiar ruta</button>
+            </div>
+            <div class="route-list" id="routeList"></div>
           </div>
           <div class="map-layout">
             <div class="map-main">
@@ -2427,7 +3190,7 @@
                 </select>
                 <label class="form-label">Rango de fechas</label>
                 <div class="date-row">
-                  <input type="date" id="fechaDesde" class="form-control" value="${minDate}" onchange="updateMap()" />
+                  <input type="date" id="fechaDesde" class="form-control" value="${today}" onchange="updateMap()" />
                   <input type="date" id="fechaHasta" class="form-control" value="${maxDate}" onchange="updateMap()" />
                 </div>
               </div>
@@ -2439,11 +3202,15 @@
         initMap();
         initCharts();
         initExplorer();
+        initAgendaFilter();
         updateMap();
         updateTabBadges();
 
         document.getElementById("footerYear").textContent =
           new Date().getFullYear();
+
+        // Feature 9: apply URL hash on load
+        applyUrlHash();
 
         const total = allData.length;
         showToast(
@@ -2461,6 +3228,17 @@
         document.getElementById("badgeMapaMobile").textContent = geo;
         document.getElementById("badgeGraficos").textContent = allData.length;
         document.getElementById("badgeExplorador").textContent = allData.length;
+        document.getElementById("badgeAgenda").textContent = allData.length;
+        const agendaMobile = document.getElementById("badgeAgendaMobile");
+        if (agendaMobile) agendaMobile.textContent = allData.length;
+        updateFavBadge();
+      }
+
+      function updateFavBadge() {
+        const n = favoritos.length;
+        document.getElementById("badgeFavoritos").textContent = n;
+        const mob = document.getElementById("badgeFavoritosMobile");
+        if (mob) mob.textContent = n;
       }
 
       // ================================================================
@@ -2496,7 +3274,7 @@
         const filtered = getMapFiltered();
         markers.clearLayers();
 
-        filtered.forEach((d) => {
+        filtered.forEach((d, idx) => {
           const color = typeColorMap[d.tipo] || "#999";
           const marker = L.circleMarker([d.lat, d.lng], {
             radius: 8,
@@ -2530,6 +3308,14 @@
             { maxWidth: 380, className: "" },
           );
           marker.bindTooltip(d.titulo, { direction: "top", offset: [0, -6] });
+          // Feature 4: Route mode click override
+          marker._eventData = d;
+          marker.on("click", function (e) {
+            if (routeMode) {
+              L.DomEvent.stopPropagation(e);
+              addToRoute(d);
+            }
+          });
           markers.addLayer(marker);
         });
 
@@ -2550,6 +3336,27 @@
         // Count chip
         const chip = document.getElementById("mapCountNum");
         if (chip) chip.textContent = filtered.length.toLocaleString("es-ES");
+
+        // Feature 8: refresh heatmap if active
+        if (heatmapActive && heatLayer && typeof L.heatLayer === "function") {
+          map.removeLayer(heatLayer);
+          const points = filtered.map((d) => [d.lat, d.lng, 1]);
+          heatLayer = L.heatLayer(points, {
+            radius: 25,
+            blur: 20,
+            maxZoom: 17,
+            gradient: {
+              0.2: "blue",
+              0.4: "cyan",
+              0.6: "lime",
+              0.8: "yellow",
+              1.0: "red",
+            },
+          }).addTo(map);
+        }
+
+        // Feature 9: update URL hash
+        updateUrlHash({});
       }
 
       function searchMapEvents() {
@@ -2587,7 +3394,7 @@
         const hastaEl = document.getElementById("fechaHasta");
         const tipoEl = document.getElementById("filtroActividad");
         const searchEl = document.getElementById("mapSearch");
-        if (desdeEl) desdeEl.value = dates[0] || "";
+        if (desdeEl) desdeEl.value = new Date().toISOString().slice(0, 10);
         if (hastaEl) hastaEl.value = dates[dates.length - 1] || "";
         if (tipoEl) tipoEl.value = "";
         if (searchEl) searchEl.value = "";
@@ -2778,28 +3585,29 @@
 
         document.getElementById("expTipo").addEventListener("change", () => {
           updateExplorerFilters();
+          currentPage = 1;
           updateTable();
+          updateUrlHash({});
         });
         document
           .getElementById("expDistrito")
           .addEventListener("change", () => {
             updateExplorerBarrios();
+            currentPage = 1;
             updateTable();
+            updateUrlHash({});
           });
-        document
-          .getElementById("expBarrio")
-          .addEventListener("change", updateTable);
-        document
-          .getElementById("expGratisSi")
-          .addEventListener("change", updateTable);
-        document
-          .getElementById("expGratisNo")
-          .addEventListener("change", updateTable);
+        document.getElementById("expBarrio").addEventListener("change", () => {
+          currentPage = 1;
+          updateTable();
+          updateUrlHash({});
+        });
         document
           .getElementById("expTableSearch")
           .addEventListener("input", () => {
             currentPage = 1;
             updateTable();
+            updateUrlHash({});
           });
 
         updateTable();
@@ -2887,9 +3695,13 @@
           .map((d, i) => {
             const color = typeColorMap[d.tipo] || "#888";
             const globalIdx = start + i;
+            const isFav = favoritos.includes(d.titulo);
             return `
             <tr onclick="openModal(${globalIdx}, getFilteredTableData())" style="cursor:pointer" title="Ver detalles">
-              <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(d.titulo)}">${escapeHtml(d.titulo)}</td>
+              <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escapeHtml(d.titulo)}">
+                <button class="btn-heart ${isFav ? "favorited" : ""}" onclick="event.stopPropagation();toggleFav('${escapeHtml(d.titulo).replace(/'/g, "\\'")}',this)" title="${isFav ? "Quitar de favoritos" : "Añadir a favoritos"}">${isFav ? "❤️" : "🤍"}</button>
+                ${escapeHtml(d.titulo)}
+              </td>
               <td><span class="badge-tipo" style="background:${color}22;color:${color}">${escapeHtml(d.tipo)}</span></td>
               <td>${escapeHtml(d.distrito)}</td>
               <td>${escapeHtml(d.barrio)}</td>
@@ -2911,8 +3723,6 @@
         const tipo = document.getElementById("expTipo").value;
         const distrito = document.getElementById("expDistrito").value;
         const barrio = document.getElementById("expBarrio").value;
-        const gratisSi = document.getElementById("expGratisSi").checked;
-        const gratisNo = document.getElementById("expGratisNo").checked;
         const search = document
           .getElementById("expTableSearch")
           .value.toLowerCase();
@@ -2922,11 +3732,11 @@
         if (distrito)
           filtered = filtered.filter((d) => d.distrito === distrito);
         if (barrio) filtered = filtered.filter((d) => d.barrio === barrio);
-        if (gratisSi && !gratisNo)
+        // Feature 3: price pill filter
+        if (pricePillState === "gratis")
           filtered = filtered.filter((d) => d.gratuito === "Sí");
-        if (gratisNo && !gratisSi)
-          filtered = filtered.filter((d) => d.gratuito === "No");
-        if (!gratisSi && !gratisNo) filtered = [];
+        else if (pricePillState === "pago")
+          filtered = filtered.filter((d) => d.gratuito !== "Sí");
         if (search) {
           filtered = filtered.filter(
             (d) =>
@@ -3098,9 +3908,14 @@
           miniWrap.innerHTML = "";
         }
 
-        // Link + Share button
-        // Store current event data for shareEvent()
+        // Feature 1: Update favorite button state in modal header
         window._currentModalEvent = d;
+        updateModalFavBtn();
+
+        // Feature 7: Similar events
+        renderSimilarEvents(d);
+
+        // Link + Share button
         const shareBtn = `<button class="btn btn-outline" style="margin-top:14px;margin-left:8px" onclick="shareEvent()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             Compartir
@@ -3375,6 +4190,655 @@
           const blobUrl = URL.createObjectURL(blob);
           navigator.serviceWorker.register(blobUrl).catch(() => {});
         } catch (e) {}
+      }
+
+      // ================================================================
+      // FEATURE 1: FAVORITOS
+      // ================================================================
+      function saveFavoritos() {
+        localStorage.setItem("favoritos", JSON.stringify(favoritos));
+        updateFavBadge();
+      }
+
+      function toggleFav(titulo, btn) {
+        const idx = favoritos.indexOf(titulo);
+        if (idx === -1) {
+          favoritos.push(titulo);
+          showToast("❤️ Añadido a favoritos", "success");
+          if (btn) {
+            btn.textContent = "❤️";
+            btn.classList.add("favorited");
+          }
+        } else {
+          favoritos.splice(idx, 1);
+          showToast("🤍 Eliminado de favoritos", "info");
+          if (btn) {
+            btn.textContent = "🤍";
+            btn.classList.remove("favorited");
+          }
+        }
+        saveFavoritos();
+        // Update modal fav button if open
+        const d = window._currentModalEvent;
+        if (d && d.titulo === titulo) updateModalFavBtn();
+      }
+
+      function updateModalFavBtn() {
+        const d = window._currentModalEvent;
+        if (!d) return;
+        const btn = document.getElementById("modalFavBtn");
+        const icon = document.getElementById("modalFavIcon");
+        if (!btn || !icon) return;
+        const isFav = favoritos.includes(d.titulo);
+        icon.textContent = isFav ? "❤️" : "🤍";
+        btn.classList.toggle("fav-active", isFav);
+      }
+
+      function toggleModalFav() {
+        const d = window._currentModalEvent;
+        if (!d) return;
+        toggleFav(d.titulo, null);
+        updateModalFavBtn();
+        // Refresh favoritos tab if open
+        if (
+          document.getElementById("tab-favoritos").classList.contains("active")
+        ) {
+          renderFavoritos();
+        }
+      }
+
+      function renderFavoritos() {
+        const grid = document.getElementById("favoritosGrid");
+        if (!grid) return;
+        if (favoritos.length === 0) {
+          grid.innerHTML = `<div class="fav-empty">
+            <div class="fav-empty-icon">💔</div>
+            <p>Aún no tienes favoritos guardados.</p>
+            <p style="margin-top:8px;font-size:13px">Haz clic en el corazón de cualquier evento para añadirlo aquí.</p>
+          </div>`;
+          return;
+        }
+        const favEvents = allData.filter((d) => favoritos.includes(d.titulo));
+        if (favEvents.length === 0) {
+          grid.innerHTML = `<div class="fav-empty"><div class="fav-empty-icon">💔</div><p>Los eventos favoritos ya no están disponibles en la API.</p></div>`;
+          return;
+        }
+        grid.innerHTML =
+          `<div class="favoritos-grid">` +
+          favEvents
+            .map((d) => {
+              const color = typeColorMap[d.tipo] || "#888";
+              const isFree = d.gratuito === "Sí";
+              const safeTitulo = escapeHtml(d.titulo).replace(/'/g, "\\'");
+              return `<div class="fav-card">
+              <div style="display:flex;align-items:flex-start;gap:8px">
+                <div class="fav-card-title" style="flex:1">${escapeHtml(d.titulo)}</div>
+                <button class="btn-heart favorited" onclick="removeFavAndRefresh('${safeTitulo}')" title="Quitar de favoritos">❤️</button>
+              </div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <span class="badge-tipo" style="background:${color}22;color:${color}">${escapeHtml(d.tipo)}</span>
+                <span class="${isFree ? "badge-gratis-si" : "badge-gratis-no"}">${isFree ? "Gratuito" : "De pago"}</span>
+              </div>
+              <div class="fav-card-dates">📅 ${d.fechaInicio || "–"} → ${d.fechaFin || "–"}</div>
+              ${d.calle ? `<div class="fav-card-location">📍 ${escapeHtml(d.calle)}</div>` : ""}
+              <div class="fav-card-actions">
+                <button class="btn btn-primary" style="padding:6px 12px;font-size:12px" onclick="openModalByTitle('${safeTitulo}')">Ver detalles</button>
+                <button class="btn btn-outline" style="padding:6px 12px;font-size:12px" onclick="removeFavAndRefresh('${safeTitulo}')">Eliminar</button>
+              </div>
+            </div>`;
+            })
+            .join("") +
+          "</div>";
+      }
+
+      function removeFavAndRefresh(titulo) {
+        const idx = favoritos.indexOf(titulo);
+        if (idx !== -1) {
+          favoritos.splice(idx, 1);
+          saveFavoritos();
+          showToast("🤍 Eliminado de favoritos", "info");
+          renderFavoritos();
+        }
+      }
+
+      function openModalByTitle(titulo) {
+        const idx = allData.findIndex((d) => d.titulo === titulo);
+        if (idx !== -1) openModal(idx, allData);
+      }
+
+      // ================================================================
+      // FEATURE 2: AÑADIR AL CALENDARIO (.ics)
+      // ================================================================
+      function downloadICS() {
+        const d = window._currentModalEvent;
+        if (!d) return;
+
+        function toICSDate(dateStr) {
+          if (!dateStr) return "";
+          // dateStr is like "2026-03-08" or "2026-03-08 00:00:00.0"
+          const clean = dateStr.slice(0, 10).replace(/-/g, "");
+          return clean;
+        }
+
+        const dtstart =
+          toICSDate(d.fechaInicio) ||
+          toICSDate(new Date().toISOString().slice(0, 10));
+        const dtend = toICSDate(d.fechaFin) || dtstart;
+        const uid = `${Date.now()}@actividadesmadrid`;
+
+        const ics = [
+          "BEGIN:VCALENDAR",
+          "VERSION:2.0",
+          "PRODID:-//ActividadesMadrid//ES",
+          "CALSCALE:GREGORIAN",
+          "METHOD:PUBLISH",
+          "BEGIN:VEVENT",
+          `UID:${uid}`,
+          `DTSTAMP:${toICSDate(new Date().toISOString())}T000000Z`,
+          `DTSTART;VALUE=DATE:${dtstart}`,
+          `DTEND;VALUE=DATE:${dtend}`,
+          `SUMMARY:${(d.titulo || "").replace(/\n/g, " ")}`,
+          `DESCRIPTION:${(d.descripcion || "").replace(/\n/g, "\\n").slice(0, 500)}`,
+          `LOCATION:${(d.calle || "").replace(/\n/g, " ")}`,
+          d.link ? `URL:${d.link}` : "",
+          "END:VEVENT",
+          "END:VCALENDAR",
+        ]
+          .filter(Boolean)
+          .join("\r\n");
+
+        const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const safeTitle = (d.titulo || "evento")
+          .replace(/[^a-zA-Z0-9]/g, "-")
+          .slice(0, 30);
+        a.download = `${safeTitle}.ics`;
+        a.click();
+        showToast("📅 Evento añadido al calendario", "success");
+      }
+
+      // ================================================================
+      // FEATURE 3: PRICE PILL FILTER
+      // ================================================================
+      function setPricePill(value, btn) {
+        pricePillState = value;
+        document.querySelectorAll(".price-pill").forEach((p) => {
+          p.classList.remove("active", "active-free", "active-paid");
+        });
+        if (value === "todos") btn.classList.add("active");
+        else if (value === "gratis") btn.classList.add("active-free");
+        else if (value === "pago") btn.classList.add("active-paid");
+        currentPage = 1;
+        updateTable();
+        updateUrlHash({});
+      }
+
+      // ================================================================
+      // FEATURE 4: ROUTE PLANNER
+      // ================================================================
+      function toggleRouteMode() {
+        routeMode = !routeMode;
+        const btn = document.getElementById("routeModeBtn");
+        if (btn) {
+          btn.classList.toggle("active", routeMode);
+          btn.innerHTML = routeMode
+            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 17l6-12 6 8 4-6"/><circle cx="3" cy="17" r="2"/><circle cx="21" cy="7" r="2"/></svg> Salir de ruta`
+            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 17l6-12 6 8 4-6"/><circle cx="3" cy="17" r="2"/><circle cx="21" cy="7" r="2"/></svg> Planificar ruta`;
+        }
+        if (routeMode) {
+          showToast(
+            "Modo ruta activo — haz clic en marcadores para añadirlos (máx. 5)",
+            "info",
+            4000,
+          );
+          renderRouteList();
+        } else {
+          clearRoute();
+        }
+        const panel = document.getElementById("routePanel");
+        if (panel) panel.classList.toggle("visible", routeMode);
+      }
+
+      function haversine(lat1, lng1, lat2, lng2) {
+        const R = 6371;
+        const dLat = ((lat2 - lat1) * Math.PI) / 180;
+        const dLng = ((lng2 - lng1) * Math.PI) / 180;
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLng / 2) ** 2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      }
+
+      function addToRoute(d) {
+        if (routeEvents.length >= 5) {
+          showToast("Máximo 5 eventos en la ruta", "error");
+          return;
+        }
+        if (routeEvents.find((e) => e.titulo === d.titulo)) {
+          showToast("Este evento ya está en la ruta", "error");
+          return;
+        }
+        routeEvents.push(d);
+        showToast(
+          `Evento ${routeEvents.length} añadido a la ruta: ${d.titulo.slice(0, 40)}`,
+          "success",
+        );
+        drawRoute();
+        renderRouteList();
+      }
+
+      function drawRoute() {
+        // Remove previous polylines
+        routePolylines.forEach((p) => map.removeLayer(p));
+        routePolylines = [];
+        if (routeEvents.length < 2) return;
+        for (let i = 0; i < routeEvents.length - 1; i++) {
+          const a = routeEvents[i];
+          const b = routeEvents[i + 1];
+          const poly = L.polyline(
+            [
+              [a.lat, a.lng],
+              [b.lat, b.lng],
+            ],
+            { color: "#7c3aed", weight: 3, opacity: 0.75, dashArray: "6 4" },
+          ).addTo(map);
+          routePolylines.push(poly);
+        }
+      }
+
+      function renderRouteList() {
+        const list = document.getElementById("routeList");
+        if (!list) return;
+        if (routeEvents.length === 0) {
+          list.innerHTML =
+            '<div style="color:var(--text-muted);font-size:12px">Haz clic en marcadores del mapa para añadirlos</div>';
+          return;
+        }
+        list.innerHTML = routeEvents
+          .map((ev, i) => {
+            let distStr = "";
+            if (i < routeEvents.length - 1) {
+              const next = routeEvents[i + 1];
+              const km = haversine(ev.lat, ev.lng, next.lat, next.lng);
+              const mins = Math.round((km / 5) * 60); // ~5km/h walking
+              distStr = `<span class="route-dist-chip">~${km.toFixed(1)} km · ${mins} min</span>`;
+            }
+            return `<div class="route-item">
+            <div class="route-num">${i + 1}</div>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${escapeHtml(ev.titulo)}">${escapeHtml(ev.titulo.slice(0, 45))}</span>
+            ${distStr}
+          </div>`;
+          })
+          .join("");
+      }
+
+      function clearRoute() {
+        routeEvents = [];
+        routePolylines.forEach((p) => map.removeLayer(p));
+        routePolylines = [];
+        renderRouteList();
+      }
+
+      // ================================================================
+      // FEATURE 5: AGENDA / CALENDAR
+      // ================================================================
+      function initAgendaFilter() {
+        const sel = document.getElementById("agendaTipoFilter");
+        if (!sel) return;
+        const types = [...new Set(allData.map((d) => d.tipo))]
+          .filter(Boolean)
+          .sort();
+        types.forEach((t) => {
+          const o = document.createElement("option");
+          o.value = t;
+          o.textContent = t;
+          sel.appendChild(o);
+        });
+      }
+
+      function agendaGetWeekStart() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        // Monday of current week
+        const dow = today.getDay(); // 0=Sun
+        const diff = dow === 0 ? -6 : 1 - dow;
+        const mon = new Date(today);
+        mon.setDate(today.getDate() + diff + agendaWeekOffset * 7);
+        return mon;
+      }
+
+      function agendaPrevWeek() {
+        agendaWeekOffset--;
+        renderAgenda();
+      }
+      function agendaNextWeek() {
+        agendaWeekOffset++;
+        renderAgenda();
+      }
+      function agendaGoToday() {
+        agendaWeekOffset = 0;
+        renderAgenda();
+      }
+
+      function renderAgenda() {
+        const grid = document.getElementById("calendarGrid");
+        if (!grid) return;
+
+        const weekStart = agendaGetWeekStart();
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        // Label
+        const opts = { month: "long", year: "numeric" };
+        const label = document.getElementById("agendaWeekLabel");
+        if (label) {
+          const s = weekStart.toLocaleDateString("es-ES", {
+            day: "numeric",
+            month: "short",
+          });
+          const e = weekEnd.toLocaleDateString("es-ES", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          });
+          label.textContent = `${s} – ${e}`;
+        }
+
+        const tipoFilter =
+          document.getElementById("agendaTipoFilter")?.value || "";
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        // Remove old day cells (keep headers = first 7 children)
+        while (grid.children.length > 7) {
+          grid.removeChild(grid.lastChild);
+        }
+
+        for (let i = 0; i < 7; i++) {
+          const day = new Date(weekStart);
+          day.setDate(weekStart.getDate() + i);
+          const dayStr = day.toISOString().slice(0, 10);
+          const isToday = day.getTime() === today.getTime();
+
+          // Events for this day
+          let dayEvents = allData.filter((d) => {
+            if (!d.fechaInicio) return false;
+            const start = d.fechaInicio.slice(0, 10);
+            const end = (d.fechaFin || d.fechaInicio).slice(0, 10);
+            return dayStr >= start && dayStr <= end;
+          });
+          if (tipoFilter)
+            dayEvents = dayEvents.filter((d) => d.tipo === tipoFilter);
+
+          const MAX_SHOW = 3;
+          const visible = dayEvents.slice(0, MAX_SHOW);
+          const more = dayEvents.length - MAX_SHOW;
+
+          const cell = document.createElement("div");
+          cell.className = "cal-day-cell" + (isToday ? " today" : "");
+          cell.innerHTML =
+            `<div class="cal-day-num">${day.getDate()}</div>` +
+            visible
+              .map((ev) => {
+                const color = typeColorMap[ev.tipo] || "#888";
+                const isFree = ev.gratuito === "Sí";
+                const safeIdx = allData.indexOf(ev);
+                return `<div class="cal-event-chip" onclick="openModal(${safeIdx}, allData)" title="${escapeHtml(ev.titulo)}">
+                <span class="cal-event-dot" style="background:${color}"></span>
+                <span style="flex:1;overflow:hidden;text-overflow:ellipsis">${escapeHtml(ev.titulo.slice(0, 30))}</span>
+                ${isFree ? '<span class="cal-gratis-badge">Gratis</span>' : ""}
+              </div>`;
+              })
+              .join("") +
+            (more > 0 ? `<div class="cal-more-chip">+${more} más</div>` : "");
+          grid.appendChild(cell);
+        }
+      }
+
+      // ================================================================
+      // FEATURE 6: SORPRÉNDEME
+      // ================================================================
+      function surpriseMe() {
+        const pool = getMapFiltered();
+        if (!pool.length) {
+          showToast("No hay eventos en el mapa para mostrar", "error");
+          return;
+        }
+        const ev = pool[Math.floor(Math.random() * pool.length)];
+        map.setView([ev.lat, ev.lng], 16, { animate: true });
+        showToast(`✨ ${ev.titulo.slice(0, 60)}`, "success", 4000);
+        launchConfetti();
+        // Open popup on the next tick
+        setTimeout(() => {
+          map.eachLayer((layer) => {
+            if (layer._eventData && layer._eventData.titulo === ev.titulo) {
+              layer.openPopup && layer.openPopup();
+            }
+          });
+        }, 500);
+      }
+
+      function launchConfetti() {
+        const colors = [
+          "#ef4444",
+          "#f59e0b",
+          "#10b981",
+          "#3b82f6",
+          "#8b5cf6",
+          "#ec4899",
+        ];
+        for (let i = 0; i < 18; i++) {
+          setTimeout(() => {
+            const dot = document.createElement("div");
+            dot.className = "confetti-dot";
+            dot.style.cssText = `
+              left: ${20 + Math.random() * 60}%;
+              top: -10px;
+              background: ${colors[Math.floor(Math.random() * colors.length)]};
+              width: ${6 + Math.random() * 6}px;
+              height: ${6 + Math.random() * 6}px;
+              animation-duration: ${2 + Math.random() * 1.5}s;
+              animation-delay: ${Math.random() * 0.5}s;
+            `;
+            document.body.appendChild(dot);
+            setTimeout(() => dot.remove(), 4000);
+          }, i * 60);
+        }
+      }
+
+      // ================================================================
+      // FEATURE 7: EVENTOS SIMILARES
+      // ================================================================
+      function renderSimilarEvents(current) {
+        const wrap = document.getElementById("modalSimilarWrap");
+        if (!wrap) return;
+        const similar = allData
+          .filter(
+            (d) =>
+              d.titulo !== current.titulo &&
+              (d.tipo === current.tipo ||
+                (d.barrio && d.barrio === current.barrio)),
+          )
+          .slice(0, 3);
+
+        if (similar.length === 0) {
+          wrap.innerHTML = "";
+          return;
+        }
+
+        wrap.innerHTML = `<div class="similar-section">
+          <h4>Eventos similares</h4>
+          <div class="similar-grid">
+            ${similar
+              .map((ev) => {
+                const color = typeColorMap[ev.tipo] || "#888";
+                const isFree = ev.gratuito === "Sí";
+                const idx = allData.indexOf(ev);
+                return `<div class="similar-card" onclick="openModal(${idx}, allData)">
+                <div class="similar-card-title" title="${escapeHtml(ev.titulo)}">${escapeHtml(ev.titulo.slice(0, 60))}</div>
+                <div class="similar-card-meta">
+                  <span class="badge-tipo" style="background:${color}22;color:${color};font-size:10px">${escapeHtml(ev.tipo)}</span>
+                  <span style="font-size:11px;color:var(--text-muted)">${ev.fechaInicio || "–"}</span>
+                  ${isFree ? '<span class="badge-gratis-si" style="font-size:10px">Gratis</span>' : ""}
+                </div>
+              </div>`;
+              })
+              .join("")}
+          </div>
+        </div>`;
+      }
+
+      // ================================================================
+      // FEATURE 8: HEATMAP
+      // ================================================================
+      function toggleHeatmap() {
+        const btn = document.getElementById("heatmapBtn");
+        heatmapActive = !heatmapActive;
+        if (btn) btn.classList.toggle("active", heatmapActive);
+
+        if (heatmapActive) {
+          // Hide cluster markers
+          map.removeLayer(markers);
+          // Build heat layer
+          const points = getMapFiltered().map((d) => [d.lat, d.lng, 1]);
+          if (typeof L.heatLayer === "function") {
+            heatLayer = L.heatLayer(points, {
+              radius: 25,
+              blur: 20,
+              maxZoom: 17,
+              gradient: {
+                0.2: "blue",
+                0.4: "cyan",
+                0.6: "lime",
+                0.8: "yellow",
+                1.0: "red",
+              },
+            }).addTo(map);
+          } else {
+            showToast("La librería de heatmap no está disponible", "error");
+            heatmapActive = false;
+            map.addLayer(markers);
+            if (btn) btn.classList.remove("active");
+          }
+          showToast("Mapa de calor activado", "info");
+        } else {
+          if (heatLayer) {
+            map.removeLayer(heatLayer);
+            heatLayer = null;
+          }
+          map.addLayer(markers);
+          showToast("Mapa de calor desactivado", "info");
+        }
+      }
+
+      // ================================================================
+      // FEATURE 9: URLs CON FILTROS (DEEP LINKING)
+      // ================================================================
+      function updateUrlHash(extra) {
+        if (!mapInitialized) return;
+        const activeTab =
+          document
+            .querySelector(".tab-content.active")
+            ?.id?.replace("tab-", "") || "mapa";
+
+        const tipo = document.getElementById("expTipo")?.value || "";
+        const distrito = document.getElementById("expDistrito")?.value || "";
+        const barrio = document.getElementById("expBarrio")?.value || "";
+        const search = document.getElementById("expTableSearch")?.value || "";
+        const fechaDesde = document.getElementById("fechaDesde")?.value || "";
+        const fechaHasta = document.getElementById("fechaHasta")?.value || "";
+        const mapTipo = document.getElementById("filtroActividad")?.value || "";
+
+        const params = {};
+        const tab = extra && extra.tab ? extra.tab : activeTab;
+        if (tab && tab !== "mapa") params.tab = tab;
+        if (mapTipo) params.mapTipo = mapTipo;
+        if (tipo) params.tipo = tipo;
+        if (distrito) params.distrito = distrito;
+        if (barrio) params.barrio = barrio;
+        if (search) params.buscar = search;
+        if (fechaDesde) params.desde = fechaDesde;
+        if (fechaHasta) params.hasta = fechaHasta;
+        if (pricePillState !== "todos") params.precio = pricePillState;
+
+        const hash = Object.entries(params)
+          .map(([k, v]) => `${k}=${encodeURIComponent(v)}`)
+          .join("&");
+
+        history.replaceState(null, "", hash ? "#" + hash : "#");
+      }
+
+      function applyUrlHash() {
+        const hash = window.location.hash.slice(1);
+        if (!hash) return;
+        const params = {};
+        hash.split("&").forEach((pair) => {
+          const [k, v] = pair.split("=");
+          if (k) params[k] = decodeURIComponent(v || "");
+        });
+
+        if (params.tab) {
+          const btn = document.querySelector(
+            `#navTabs button[data-tab="${params.tab}"]`,
+          );
+          if (btn) switchTab(params.tab, btn);
+        }
+        if (params.tipo && document.getElementById("expTipo")) {
+          document.getElementById("expTipo").value = params.tipo;
+          updateExplorerFilters();
+        }
+        if (params.distrito && document.getElementById("expDistrito")) {
+          document.getElementById("expDistrito").value = params.distrito;
+          updateExplorerBarrios();
+        }
+        if (params.barrio && document.getElementById("expBarrio")) {
+          document.getElementById("expBarrio").value = params.barrio;
+        }
+        if (params.buscar && document.getElementById("expTableSearch")) {
+          document.getElementById("expTableSearch").value = params.buscar;
+        }
+        if (params.desde && document.getElementById("fechaDesde")) {
+          document.getElementById("fechaDesde").value = params.desde;
+        }
+        if (params.hasta && document.getElementById("fechaHasta")) {
+          document.getElementById("fechaHasta").value = params.hasta;
+        }
+        if (params.mapTipo && document.getElementById("filtroActividad")) {
+          document.getElementById("filtroActividad").value = params.mapTipo;
+        }
+        if (params.precio) {
+          const pillBtn = document.querySelector(
+            `.price-pill[data-price="${params.precio}"]`,
+          );
+          if (pillBtn) setPricePill(params.precio, pillBtn);
+        }
+        updateTable();
+        updateMap();
+      }
+
+      // ================================================================
+      // FEATURE 10: WIDGET EMBEBIBLE
+      // ================================================================
+      function copyWidgetCode() {
+        const code = document.getElementById("widgetCode")?.value || "";
+        if (navigator.clipboard) {
+          navigator.clipboard
+            .writeText(code)
+            .then(() => showToast("Código copiado al portapapeles", "success"))
+            .catch(() => showToast("No se pudo copiar el código", "error"));
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = code;
+          ta.style.cssText = "position:fixed;opacity:0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+          showToast("Código copiado al portapapeles", "success");
+        }
       }
 
       // ================================================================
