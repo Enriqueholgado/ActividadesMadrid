@@ -6,7 +6,7 @@
 
 ## Demo
 
-Accede a la aplicación en directo aqui:
+Accede a la aplicación en directo:
 **[https://enriqueholgado.github.io/ActividadesMadrid/](https://enriqueholgado.github.io/ActividadesMadrid/)**
 
 ---
@@ -16,37 +16,60 @@ Accede a la aplicación en directo aqui:
 ### 🗺️ Mapa interactivo
 - Marcadores agrupados con **Leaflet + MarkerCluster** para gestionar cientos de eventos sin saturar la vista
 - **Búsqueda** por nombre de evento con pan automático al resultado
-- **Filtros** por tipo de actividad y rango de fechas
+- **Filtros** por tipo de actividad y rango de fechas (desde hoy por defecto)
 - Botón **"Hoy"** para mostrar solo los eventos del día
 - Botón **"Esta semana"** para ver los próximos 7 días de un vistazo
 - Botón **"Cerca de mí"** que usa la Geolocation API para centrarse en tu posición y mostrar cuántos eventos tienes a menos de 2 km
+- **Mapa de calor** (heatmap) para visualizar zonas con mayor concentración de eventos
+- **Planificar ruta** entre hasta 5 eventos con distancia estimada a pie
+- Botón **"Sorpréndeme"** que te lleva a un evento aleatorio con animación de confetti
 
 ### 📊 Panel de gráficos
-- Estadísticas animadas con contador progresivo: total de eventos, barrio más activo, ratio de gratuidad
+- Estadísticas animadas con contador progresivo: total de eventos, barrio más activo, eventos gratuitos
 - **Gráfico de barras** de eventos por distrito
 - **Gráfico de doughnut** con distribución por tipología (Chart.js)
 - Filtro global por tipo de actividad que actualiza todos los gráficos en tiempo real
 
 ### 📋 Explorador de datos
-- **Filtros jerárquicos**: tipo → distrito → barrio (el segundo y tercero se actualizan dinámicamente)
+- **Filtros jerárquicos**: tipo → distrito → barrio (se actualizan dinámicamente)
+- **Filtro por precio** con pills modernos: Todos / Gratuito / De pago
 - **Tabla ordenable** haciendo clic en cualquier cabecera
 - **Paginación** con salto directo a página
 - **Búsqueda** en texto libre por título, tipo, distrito, barrio y ubicación
 - **Exportar CSV** con BOM UTF-8 para apertura directa en Excel
 - **Navegación por teclado**: flechas ↑↓ para moverte por las filas, Enter para abrir el detalle
 
+### 📅 Vista Agenda semanal
+- Calendario visual con vista por semana (Lun–Dom)
+- Navegación entre semanas con flechas y botón "Hoy"
+- Filtro por tipo de actividad
+- Chips de eventos con indicador de color por tipo y badge de gratuidad
+- Clic en cualquier evento abre el modal de detalle
+
 ### 🔍 Modal de detalle
 - Información completa del evento: organizador, fechas, hora, precio, accesibilidad y fechas excluidas
 - **Mini-mapa** integrado con Leaflet que muestra la ubicación exacta
-- Botón **"Compartir"**: usa la Web Share API si está disponible, o copia el enlace al portapapeles como fallback
+- **Eventos similares**: hasta 3 eventos del mismo tipo o barrio
+- Botón **"Compartir"**: usa la Web Share API si está disponible, o copia el enlace al portapapeles
+- Botón **"Añadir al calendario"**: genera y descarga un fichero `.ics` compatible con Google Calendar, Apple Calendar, Outlook, etc.
+
+### ❤️ Favoritos
+- Marca eventos como favoritos con el botón de corazón (desde la tabla o el modal)
+- **Pestaña Favoritos** dedicada con vista de tarjetas
+- Persistencia en `localStorage` entre sesiones
 
 ### ✨ UX y accesibilidad
 - **Modo oscuro / claro** con persistencia en `localStorage`
 - Diseño **responsive** con _hamburger menu_ para móvil
 - **Toast notifications** para feedback inmediato al usuario
 - Botón **scroll to top** que aparece al bajar la página
-- **Banner de bienvenida** con el total de actividades disponibles, descartable y con estado guardado en `localStorage`
+- **Banner de bienvenida** descartable con el total de actividades disponibles
 - **Service Worker** para funcionamiento offline básico (cachea recursos estáticos)
+- **Deep linking**: los filtros se guardan en la URL (`#tab=mapa&tipo=Danza&desde=...`) para poder compartir búsquedas
+
+### 🧩 Widget embebible
+- Código `<iframe>` listo para copiar desde la pestaña "Sobre esta aplicación"
+- Permite a cualquier web incrustar el dashboard de actividades
 
 ---
 
@@ -65,12 +88,15 @@ Los datos se cargan en tiempo real en cada visita, sin intermediario.
 
 | Tecnología | Uso |
 |---|---|
-| **Leaflet.js** | Mapa interactivo y mini-mapa en modal |
+| **Leaflet.js** | Mapa interactivo, mini-mapa en modal, mapa de calor |
 | **Leaflet.markercluster** | Agrupación de marcadores |
+| **Leaflet.heat** | Capa de mapa de calor |
 | **Chart.js** | Gráficos de barras y doughnut |
-| **HTML / CSS / JS vanilla** | Sin frameworks, sin bundler |
-| **CartoDB Positron tiles** | Teselas del mapa (modo claro y oscuro) |
+| **HTML / CSS / JS vanilla** | Sin frameworks, sin bundler — un solo archivo |
+| **CartoDB Positron tiles** | Teselas del mapa (modo claro y oscuro vía CSS filter) |
 | **Inter (Google Fonts)** | Tipografía principal |
+| **Web Share API** | Compartir eventos en dispositivos compatibles |
+| **Geolocation API** | Función "Cerca de mí" |
 
 ---
 
@@ -101,6 +127,21 @@ python -m SimpleHTTPServer
 ```
 
 Abre `http://localhost:3000` (o el puerto que indique el comando) en tu navegador.
+
+---
+
+## Estructura del proyecto
+
+```
+ActividadesMadrid/
+├── index.html    # Toda la app (~4800 líneas: HTML + CSS + JS)
+├── README.md     # Este archivo
+├── .gitignore
+└── img/
+    ├── logo_madrid_dark.png
+    ├── logo-ayto-madrid-300x216.png
+    └── firma_madrid_blanco.png
+```
 
 ---
 
