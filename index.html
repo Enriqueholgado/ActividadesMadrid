@@ -322,7 +322,7 @@
       .tab-content {
         display: none;
         padding: 28px 24px;
-        max-width: 1440px;
+        max-width: 1600px;
         margin: 0 auto;
         width: 100%;
         animation: fadeIn 0.28s ease;
@@ -508,10 +508,14 @@
       ============================================================ */
       .map-toolbar {
         display: flex;
-        gap: 10px;
+        gap: 8px;
         margin-bottom: 14px;
         flex-wrap: wrap;
         align-items: center;
+      }
+      .map-toolbar .btn {
+        padding: 7px 12px;
+        font-size: 12.5px;
       }
       .map-search-wrap {
         position: relative;
@@ -1806,13 +1810,13 @@
          FEATURE 6: SORPRENDEME BUTTON + CONFETTI
       ============================================================ */
       .btn-surprise {
-        background: linear-gradient(135deg, #7c3aed, #db2777);
-        color: #fff;
-        border-color: transparent;
-        font-weight: 700;
+        background: var(--surface);
+        color: var(--text);
+        border-color: var(--border);
+        font-weight: 600;
       }
       .btn-surprise:hover {
-        background: linear-gradient(135deg, #6d28d9, #be185d);
+        background: var(--surface2);
       }
       @keyframes confetti-fall {
         0% {
